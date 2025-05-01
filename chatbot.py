@@ -88,7 +88,7 @@ def entrainer_model(df):
     try:
         # Configuration optimisée du vectorizer
         vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),
+            ngram_range=(1, 3),
             min_df=2,
             max_df=0.85,
             stop_words=list(STOPWORDS)
