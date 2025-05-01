@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot ISET - Assistance étudiante</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --accent-color: #e74c3c;
+      --light-color: #ecf0f1;
+      --dark-color: #2c3e50;
+      --success-color: #27ae60;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background-color: #f5f7fa;
+      color: var(--dark-color);
+      line-height: 1.6;
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    
+    .header h1 {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 500;
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+    
+    .chat-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .chat-history {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex-grow: 1;
+      min-height: 300px;
+      max-height: 60vh;
+    }
+    
+    .message {
+      margin-bottom: 1rem;
+      max-width: 80%;
+      padding: 0.8rem 1rem;
+      border-radius: 18px;
+      line-height: 1.4;
+      position: relative;
+    }
+    
+    .user-message {
+      background-color: var(--secondary-color);
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+    
+    .bot-message {
+      background-color: var(--light-color);
+      margin-right: auto;
+      border-bottom-left-radius: 4px;
+    }
+    
+    .chat-form {
+      display: flex;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-top: 1px solid #e9ecef;
+    }
+    
+    .chat-input {
+      flex-grow: 1;
+      padding: 0.8rem 1rem;
+      border: 1px solid #ddd;
+      border-radius: 25px;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.3s;
+    }
+    
+    .chat-input:focus {
+      border-color: var(--secondary-color);
+    }
+    
+    .send-button {
+      background-color: var(--secondary-color);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      padding: 0 1.5rem;
+      margin-left: 0.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+    
+    .send-button:hover {
+      background-color: #2980b9;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 0.9rem;
+    }
+    
+    .typing-indicator {
+      display: inline-block;
+      padding: 0.8rem 1rem;
+      background-color: var(--light-color);
+      border-radius: 18px;
+      margin-bottom: 1rem;
+    }
+    
+    .typing-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #7f8c8d;
+      margin-right: 4px;
+      animation: typingAnimation 1.4s infinite both;
+    }
+    
+    .typing-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+    
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+      margin-right: 0;
+    }
+    
+    @keyframes typingAnimation {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
+    }
+    
+    @media (max-width: 600px) {
+      .chat-container {
+        margin: 0;
+        border-radius: 0;
+        min-height: 100vh;
+      }
+      
+      .message {
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Chatbot ISET</h1>
+    <p>Votre assistant virtuel pour toutes vos questions académiques</p>
+  </div>
+  
+  <div class="chat-container">
+    <div class="chat-history" id="chat-history">
+      <div class="message bot-message">
+        Bonjour ! Je suis le chatbot de l'ISET. Comment puis-je vous aider aujourd'hui ?
+      </div>
+    </div>
+    
+    <form action="/chat" method="post" class="chat-form" id="chat-form">
+      <input type="text" name="message" class="chat-input" placeholder="Posez votre question..." required>
+      <button type="submit" class="send-button">Envoyer</button>
+    </form>
+  </div>
+  
+  <div class="footer">
+    © 2023 ISET - Tous droits réservés
+  </div>
+
+  <script>
+    const form = document.getElementById('chat-form');
+    const chatHistory = document.getElementById('chat-history');
+    const chatInput = document.querySelector('.chat-input');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = chatInput.value.trim();
+        
+        if (!message) return;
+        
+        // Ajouter le message de l'utilisateur
+        addMessage(message, 'user');
+        chatInput.value = '';
+        
+        // Afficher l'indicateur de saisie
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message })
+            });
+            
+            const data = await response.json();
+            // Supprimer l'indicateur de saisie
+            removeTypingIndicator();
+            
+            // Ajouter la réponse du bot de manière progressive
+            if (data.reponse) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', 'bot-message');
+                chatHistory.appendChild(messageDiv);
+                
+                // Créer un conteneur interne pour le contenu HTML
+                const contentDiv = document.createElement('div');
+                messageDiv.appendChild(contentDiv);
+                
+                // Afficher progressivement le texte
+                await typewriterEffect(contentDiv, data.reponse);
+                
+                // Appliquer le style après l'affichage
+                applyMessageStyles(contentDiv);
+                
+                scrollToBottom();
+            } else {
+                addMessage("Je n'ai pas pu comprendre votre demande. Pourriez-vous reformuler ?", 'bot');
+            }
+        } catch (error) {
+            removeTypingIndicator();
+            addMessage("Désolé, une erreur de connexion s'est produite. Veuillez vérifier votre connexion internet et réessayer.", 'bot');
+            console.error('Error:', error);
+        }
+    });
+    
+    // Fonction pour afficher le texte progressivement
+    async function typewriterEffect(element, text) {
+        return new Promise((resolve) => {
+            let i = 0;
+            const speed = 20; // vitesse d'écriture en ms
+            
+            function typeWriter() {
+                if (i < text.length) {
+                    element.innerHTML = text.substring(0, i+1);
+                    i++;
+                    setTimeout(typeWriter, speed);
+                } else {
+                    resolve();
+                }
+            }
+            
+            typeWriter();
+        });
+    }
+    
+    // Fonction pour appliquer les styles après l'affichage
+    function applyMessageStyles(contentDiv) {
+        // Style pour les liens
+        const links = contentDiv.querySelectorAll('a');
+        links.forEach(link => {
+            link.style.color = '#3498db';
+            link.style.textDecoration = 'none';
+            link.style.fontWeight = '500';
+            link.addEventListener('mouseover', () => {
+                link.style.textDecoration = 'underline';
+            });
+            link.addEventListener('mouseout', () => {
+                link.style.textDecoration = 'none';
+            });
+        });
+        
+        // Style pour les petits textes (sources)
+        const smallTexts = contentDiv.querySelectorAll('small');
+        smallTexts.forEach(small => {
+            small.style.display = 'block';
+            small.style.marginTop = '8px';
+            small.style.fontSize = '0.8em';
+            small.style.color = '#7f8c8d';
+        });
+    }
+    
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', `${sender}-message`);
+        
+        // Si c'est du texte simple
+        if (typeof text === 'string') {
+            messageDiv.textContent = text;
+        } else {
+            messageDiv.appendChild(text);
+        }
+        
+        chatHistory.appendChild(messageDiv);
+        scrollToBottom();
+    }
+    
+    function showTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.classList.add('typing-indicator');
+        typingDiv.id = 'typing-indicator';
+        typingDiv.innerHTML = `
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+        `;
+        chatHistory.appendChild(typingDiv);
+        scrollToBottom();
+    }
+    
+    function removeTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    function scrollToBottom() {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+    
+    // Permettre l'envoi avec la touche Entrée
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
+        }
+    });
+</script>
+</body>
+</html>
