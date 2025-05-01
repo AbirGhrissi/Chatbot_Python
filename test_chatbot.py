@@ -28,13 +28,25 @@ def test_question(question):
         print(f"Statut: Erreur {response.status_code}")
         print(response.text)
 
-# Questions de test
+# Questions de test supplémentaires
 QUESTIONS = [
     "qui est le directeur",
     "inscription distance",
     "master informatique",
     "clubs étudiants",
-    "contacts école"
+    "contacts école",
+    "comment postuler pour un master ?", 
+    "quelles sont les conditions d'admission ?",
+    "où se trouve l'ISET de Sfax ?",
+    "quels sont les avantages du programme de master ?", 
+    "quelles sont les spécialisations en master informatique ?", 
+    "qu’est-ce que le master DSI ?",
+    "quelles sont les modalités de financement ?", 
+    "quels sont les projets étudiants à l'ISET de Sfax ?", 
+    "qui sont les responsables de l'ISET ?", 
+    "quelles sont les formations proposées en informatique ?",
+    "y a-t-il des clubs étudiants à l'ISET ?", 
+    "rentrée scolaire"
 ]
 
 if __name__ == "__main__":
