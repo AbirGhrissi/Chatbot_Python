@@ -17,6 +17,8 @@ from urllib3.util import Retry
 from requests.adapters import HTTPAdapter
 import time
 from nltk.tokenize import word_tokenize
+from collections import defaultdict
+import os
 
 app = Flask(__name__)
 
@@ -32,11 +34,12 @@ REQUEST_TIMEOUT = 3  # seconds
 GOOGLE_TIMEOUT = 5  # seconds
 MAX_CONCURRENT_REQUESTS = 5
 MAX_PAGES_TO_CRAWL = 8
-
+CSV_FILE_VOTE = 'votes.csv'
 # Initialisation globale
 app.df = None
 app.vectorizer = None
 app.X = None
+app.votes = defaultdict(lambda: {'likes': 0, 'dislikes': 0})
 
 # Configuration des requêtes HTTP (pour les parties synchrones)
 session = requests.Session()
@@ -85,11 +88,11 @@ def init_app():
         logger.info("Chargement des données...")
         app.df = charger_donnees()
         app.vectorizer, app.X = entrainer_model(app.df)
+        app.votes = load_votes()
         logger.info(f"Modèle chargé avec {len(app.df)} entrées")
     except Exception as e:
         logger.error(f"Erreur initialisation: {str(e)}")
         raise
-
 async def fetch_page(session, url):
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)) as response:
@@ -145,7 +148,23 @@ async def extract_page_content_async(url):
             'sections': sections,
             'full_text': ' '.join(sections.values())
         }
+def load_votes():
+    try:
+        with open('votes.csv', mode='r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            votes = defaultdict(lambda: {'likes': 0, 'dislikes': 0})
+            for row in reader:
+                votes[row['hash']] = {'likes': int(row['likes']), 'dislikes': int(row['dislikes'])}
+            return votes
+    except FileNotFoundError:
+        return defaultdict(lambda: {'likes': 0, 'dislikes': 0})
 
+def save_votes(votes):
+    with open('votes.csv', mode='w', encoding='utf-8', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=['hash', 'likes', 'dislikes'])
+        writer.writeheader()
+        for hash, data in votes.items():
+            writer.writerow({'hash': hash, 'likes': data['likes'], 'dislikes': data['dislikes']})
 @log_execution_time
 async def process_page_async(url, question):
     try:
@@ -302,7 +321,106 @@ def store_in_csv(question, answer):
     with open(CSV_FILE, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow([datetime.now(), question, str(answer)])
+if not os.path.exists(CSV_FILE):
+    with open(CSV_FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['hash', 'likes', 'dislikes'])
+        writer.writeheader()
 
+@app.route('/vote', methods=['POST'])
+def vote():
+    try:
+        data = request.json
+        response_hash = str(data.get('hash'))  # Convertir en string pour être sûr
+        vote_type = data.get('type')
+        site_data = data.get('site_data')  # Dictionnaire avec Question, Réponse, URL
+
+        if not response_hash or vote_type not in ['like', 'dislike'] or not isinstance(site_data, dict):
+            return jsonify({'status': 'error', 'message': 'Invalid input'}), 400
+
+        # ----------- Mise à jour du fichier votes.csv -----------
+        votes = []
+        found = False
+
+        try:
+            with open(CSV_FILE_VOTE, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['hash'] == response_hash:
+                        if vote_type == 'like':
+                            row['likes'] = str(int(row['likes']) + 1)
+                        else:
+                            row['dislikes'] = str(int(row['dislikes']) + 1)
+                        found = True
+                    votes.append(row)
+        except FileNotFoundError:
+            pass
+
+        if not found:
+            votes.append({
+                'hash': response_hash,
+                'likes': '1' if vote_type == 'like' else '0',
+                'dislikes': '1' if vote_type == 'dislike' else '0'
+            })
+
+        with open(CSV_FILE_VOTE, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=['hash', 'likes', 'dislikes'])
+            writer.writeheader()
+            writer.writerows(votes)
+
+        # ----------- Mise à jour du fichier iset_site_data.csv -----------
+        already_exists = False
+        site_rows = []
+
+        try:
+            with open(CSV_FILE, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['hash'] == response_hash:
+                        already_exists = True
+                    site_rows.append(row)
+        except FileNotFoundError:
+            pass  # fichier inexistant, on le créera plus bas
+
+        if not already_exists:
+            site_rows.append({
+                'Question': site_data.get('Question', ''),
+                'Réponse': site_data.get('Réponse', ''),
+                'URL': site_data.get('URL', ''),
+                'hash': response_hash
+            })
+
+            with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=['Question', 'Réponse', 'URL', 'hash'])
+                writer.writeheader()
+                writer.writerows(site_rows)
+
+        return jsonify({'status': 'success'})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+@app.route('/get_votes', methods=['GET'])
+def get_votes():
+    try:
+        response_hash = request.args.get('hash')
+        if not response_hash:
+            return jsonify({'status': 'error', 'message': 'Hash missing'}), 400
+
+        votes = {'likes': 0, 'dislikes': 0}
+        
+        try:
+            with open(CSV_FILE_VOTE, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row['hash'] == response_hash:
+                        votes['likes'] = int(row.get('likes', 0))
+                        votes['dislikes'] = int(row.get('dislikes', 0))
+                        break
+        except FileNotFoundError:
+            pass
+
+        return jsonify(votes)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 @app.route('/chat', methods=['POST'])
 async def chat():
     start_time = datetime.now()
@@ -341,8 +459,15 @@ async def chat():
                         "score": float(score),
                         "source": app.df.iloc[idx]["URL"],
                         "categorie": app.df.iloc[idx]["Catégorie"],
-                        "type": "local_db"
+                        "type": "local_db",
+                        "hash": hash(clean_response[:100])  # Ajout du hash pour identifier la réponse
                     })
+
+                    # Triez les réponses en fonction des votes avant de les renvoyer
+                    responses.sort(key=lambda x: (
+                        app.votes[str(x.get('hash', 0))]['likes'] - app.votes[str(x.get('hash', 0))]['dislikes'],
+                        x['score']
+                    ), reverse=True)
         
         # Si aucune réponse pertinente trouvée localement
         if not responses or all(resp['score'] < 0.5 for resp in responses):
