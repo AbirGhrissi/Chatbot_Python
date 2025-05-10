@@ -88,8 +88,8 @@ def init_app():
         logger.info("Chargement des données...")
         app.df = charger_donnees()
         app.vectorizer, app.X = entrainer_model(app.df)
-        app.votes = load_votes()
-        logger.info(f"Modèle chargé avec {len(app.df)} entrées")
+        app.votes = load_votes()  
+        logger.info(f"Modèle chargé avec {len(app.df)} entrées et {len(app.votes)} votes")
     except Exception as e:
         logger.error(f"Erreur initialisation: {str(e)}")
         raise
@@ -149,16 +149,18 @@ async def extract_page_content_async(url):
             'full_text': ' '.join(sections.values())
         }
 def load_votes():
+    votes = defaultdict(lambda: {'likes': 0, 'dislikes': 0})
     try:
-        with open('votes.csv', mode='r', encoding='utf-8') as file:
+        with open(CSV_FILE_VOTE, mode='r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
-            votes = defaultdict(lambda: {'likes': 0, 'dislikes': 0})
             for row in reader:
-                votes[row['hash']] = {'likes': int(row['likes']), 'dislikes': int(row['dislikes'])}
-            return votes
+                votes[row['hash']] = {
+                    'likes': int(row['likes']),
+                    'dislikes': int(row['dislikes'])
+                }
     except FileNotFoundError:
-        return defaultdict(lambda: {'likes': 0, 'dislikes': 0})
-
+        logger.info("Aucun fichier de votes trouvé, création d'un nouveau")
+    return votes
 def save_votes(votes):
     with open('votes.csv', mode='w', encoding='utf-8', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=['hash', 'likes', 'dislikes'])
@@ -463,11 +465,6 @@ async def chat():
                         "hash": hash(clean_response[:100])  # Ajout du hash pour identifier la réponse
                     })
 
-                    # Triez les réponses en fonction des votes avant de les renvoyer
-                    responses.sort(key=lambda x: (
-                        app.votes[str(x.get('hash', 0))]['likes'] - app.votes[str(x.get('hash', 0))]['dislikes'],
-                        x['score']
-                    ), reverse=True)
         
         # Si aucune réponse pertinente trouvée localement
         if not responses or all(resp['score'] < 0.5 for resp in responses):
@@ -533,8 +530,13 @@ async def chat():
                 responses.extend(formatted_results)
                 store_in_csv(user_input, search_result)
         
-        # Trier et formater les réponses
-        responses.sort(key=lambda x: x['score'], reverse=True)
+       # Remplacer toute la partie tri par ceci :
+            def get_response_weight(response):
+                votes = app.votes.get(response['hash'], {'likes': 0, 'dislikes': 0})
+                vote_score = votes['likes'] - votes['dislikes']
+                return (vote_score * 2) + response['score']  # Donne plus de poids aux votes
+
+            responses.sort(key=get_response_weight, reverse=True)
         
         if not responses:
             return jsonify({
