@@ -115,24 +115,23 @@
     }
 
     .send-button {
-  background-color: var(--secondary-color);
-  color: white;
-  border: none;
-  border-radius: 50px;
-  padding: 0.7rem 1.8rem;
-  margin-left: 0.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
+      background-color: var(--secondary-color);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 0.7rem 1.8rem;
+      margin-left: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
 
-.send-button:hover {
-  background-color: #2980b9;
-  transform: translateY(-2px);
-}
-
+    .send-button:hover {
+      background-color: #2980b9;
+      transform: translateY(-2px);
+    }
 
     .footer {
       text-align: center;
@@ -185,34 +184,59 @@
     }
    
     .vote-buttons {
-     display: flex;
-     margin-top: 8px;
-     gap: 8px;
+      display: flex;
+      margin-top: 8px;
+      gap: 8px;
     }
 
     .vote-button {
-     background: none;
-     border: none;
-     cursor: pointer;
-     font-size: 14px;
-     display: flex;
-     align-items: center;
-     gap: 4px;
-     color: #7f8c8d;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #7f8c8d;
     }
 
     .vote-button.liked {
-     color: var(--success-color);
+      color: var(--success-color);
     }
 
     .vote-button.disliked {
-     color: var(--accent-color);
-   }
+      color: var(--accent-color);
+    }
 
-   .vote-count {
-    font-size: 12px;
-    margin-left: 4px;
-   }
+    .vote-count {
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    .response-options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .response-option {
+      padding: 8px 12px;
+      border-radius: 8px;
+      background-color: #f0f4f8;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .response-option:hover {
+      background-color: #e1e8ed;
+    }
+
+    .error-message {
+      color: var(--accent-color);
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
 
     @keyframes blink {
       0%, 80%, 100% { opacity: 0; }
@@ -239,7 +263,9 @@
 </head>
 <body>
   <div class="header">
-    <h1>Chatbot ISET</h1>
+    <h1>Chatbot ISET
+      <button id="clear-history" class="clear-button">Effacer l'historique</button>
+    </h1>
     <p>Votre assistant virtuel pour toutes vos questions académiques</p>
   </div>
 
@@ -250,8 +276,8 @@
       </div>
     </div>
 
-    <form action="/chat" method="post" class="chat-form" id="chat-form">
-      <input type="text" name="message" class="chat-input" placeholder="Posez votre question..." required id="message-input">
+    <form class="chat-form" id="chat-form">
+      <input type="text" class="chat-input" placeholder="Posez votre question..." required id="message-input">
       <button type="button" id="mic-button" class="send-button">🎤</button>
       <div id="recording-indicator">
         <span class="dot"></span>
@@ -269,41 +295,76 @@
   <script>
     const form = document.getElementById('chat-form');
     const chatHistory = document.getElementById('chat-history');
-    const chatInput = document.querySelector('.chat-input');
+    const chatInput = document.getElementById('message-input');
     const micButton = document.getElementById("mic-button");
     const recordingIndicator = document.getElementById("recording-indicator");
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = "fr-FR";
+    // Vérifie si la reconnaissance vocale est disponible
+    const isSpeechRecognitionSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+    
+    if (isSpeechRecognitionSupported) {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "fr-FR";
+      recognition.interimResults = false;
 
-    micButton.addEventListener("click", function () {
-      recognition.start();
-      recordingIndicator.classList.add("active");
-    });
+      micButton.addEventListener("click", function() {
+        try {
+          recognition.start();
+          recordingIndicator.classList.add("active");
+          micButton.disabled = true;
+        } catch (error) {
+          console.error("Erreur de reconnaissance vocale:", error);
+          addMessage("La reconnaissance vocale n'a pas pu démarrer. Veuillez vérifier vos permissions microphone.", 'bot');
+        }
+      });
 
-    recognition.onresult = function (event) {
-      const transcript = event.results[0][0].transcript;
-      chatInput.value = transcript;
-    };
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        chatInput.value = transcript;
+      };
 
-    recognition.onend = function () {
-      recordingIndicator.classList.remove("active");
-    };
+      recognition.onerror = function(event) {
+        console.error("Erreur de reconnaissance:", event.error);
+        addMessage(`Erreur de reconnaissance vocale: ${event.error}`, 'bot');
+      };
+
+      recognition.onend = function() {
+        recordingIndicator.classList.remove("active");
+        micButton.disabled = false;
+      };
+    } else {
+      micButton.style.display = 'none';
+      console.warn("La reconnaissance vocale n'est pas supportée par ce navigateur");
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const message = chatInput.value.trim();
-      if (!message) return;
+      
+      if (!message) {
+        showError("Veuillez saisir un message");
+        return;
+      }
+      
       addMessage(message, 'user');
       chatInput.value = '';
+      clearErrors();
       showTypingIndicator();
 
       try {
         const response = await fetch('/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify({ message })
         });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+        }
 
         const data = await response.json();
         removeTypingIndicator();
@@ -324,10 +385,22 @@
         }
       } catch (error) {
         removeTypingIndicator();
-        addMessage("Désolé, une erreur de connexion s'est produite.", 'bot');
-        console.error('Error:', error);
+        console.error('Erreur:', error);
+        addMessage("Une erreur technique est survenue. Notre équipe a été notifiée. Vous pouvez essayer de reformuler votre question ou consulter <a href='https://isetsf.rnu.tn' target='_blank'>le site de l'ISET</a> directement.", 'bot');
       }
     });
+
+    function showError(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message';
+      errorDiv.textContent = message;
+      form.appendChild(errorDiv);
+    }
+
+    function clearErrors() {
+      const errors = form.querySelectorAll('.error-message');
+      errors.forEach(error => error.remove());
+    }
 
     async function typewriterEffect(element, text) {
       return new Promise((resolve) => {
@@ -346,164 +419,222 @@
       });
     }
 
-    // Fonction pour appliquer les styles après l'affichage
-    function applyMessageStyles(contentDiv) {
-    // Style pour les liens et petits textes
-        const links = contentDiv.querySelectorAll('a');
-        links.forEach(link => {
-            link.style.color = '#3498db';
-            link.style.textDecoration = 'none';
-            link.style.fontWeight = '500';
-            link.addEventListener('mouseover', () => {
-                link.style.textDecoration = 'underline';
-            });
-            link.addEventListener('mouseout', () => {
-                link.style.textDecoration = 'none';
-            });
+    async function applyMessageStyles(contentDiv) {
+      // Style pour les liens et petits textes
+      const links = contentDiv.querySelectorAll('a');
+      links.forEach(link => {
+        link.style.color = '#3498db';
+        link.style.textDecoration = 'none';
+        link.style.fontWeight = '500';
+        link.addEventListener('mouseover', () => {
+          link.style.textDecoration = 'underline';
         });
-
-        const smallTexts = contentDiv.querySelectorAll('small');
-        smallTexts.forEach(small => {
-            small.style.display = 'block';
-            small.style.marginTop = '8px';
-            small.style.fontSize = '0.8em';
-            small.style.color = '#7f8c8d';
+        link.addEventListener('mouseout', () => {
+          link.style.textDecoration = 'none';
         });
+      });
 
-    // Ajouter des boutons de vote pour chaque option dans les réponses multiples
-        if (contentDiv.innerHTML.includes('response-option')) {
-            const options = contentDiv.querySelectorAll('.response-option');
-            options.forEach(option => {
-                const optionText = option.textContent.trim();
-                const responseHash = hashString(optionText);
-            
-                const voteContainer = document.createElement('div');
-                voteContainer.className = 'vote-buttons';
-            
-                fetch(`/get_votes?hash=${responseHash}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const likeButton = document.createElement('button');
-                        likeButton.className = 'vote-button';
-                        likeButton.innerHTML = `👍 <span class="vote-count">${data.likes || 0}</span>`;
-                        likeButton.onclick = (e) => {
-                            e.stopPropagation();
-                            handleVote(option, 'like', responseHash);
-                        };
-                    
-                        const dislikeButton = document.createElement('button');
-                        dislikeButton.className = 'vote-button';
-                        dislikeButton.innerHTML = `👎 <span class="vote-count">${data.dislikes || 0}</span>`;
-                        dislikeButton.onclick = (e) => {
-                            e.stopPropagation();
-                            handleVote(option, 'dislike', responseHash);
-                        };
-                        
-                        voteContainer.appendChild(likeButton);
-                        voteContainer.appendChild(dislikeButton);
-                        option.appendChild(voteContainer);
-                    });
-            });
-        } else if (contentDiv.closest('.bot-message')) {
-            // Gestion des votes pour les réponses simples
-            const responseHash = hashString(contentDiv.textContent);
-            const voteContainer = document.createElement('div');
-            voteContainer.className = 'vote-buttons';
+      const smallTexts = contentDiv.querySelectorAll('small');
+      smallTexts.forEach(small => {
+        small.style.display = 'block';
+        small.style.marginTop = '8px';
+        small.style.fontSize = '0.8em';
+        small.style.color = '#7f8c8d';
+      });
+
+      // Ajouter des boutons de vote pour chaque option dans les réponses multiples
+      if (contentDiv.innerHTML.includes('response-option')) {
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'response-options-container';
         
-            fetch(`/get_votes?hash=${responseHash}`)
-                .then(response => response.json())
-                .then(data => {
-                    const likeButton = document.createElement('button');
-                    likeButton.className = 'vote-button';
-                    likeButton.innerHTML = `👍 <span class="vote-count">${data.likes || 0}</span>`;
-                    likeButton.onclick = () => handleVote(contentDiv, 'like', responseHash);
-                
-                    const dislikeButton = document.createElement('button');
-                    dislikeButton.className = 'vote-button';
-                    dislikeButton.innerHTML = `👎 <span class="vote-count">${data.dislikes || 0}</span>`;
-                    dislikeButton.onclick = () => handleVote(contentDiv, 'dislike', responseHash);
-                
-                    voteContainer.appendChild(likeButton);
-                    voteContainer.appendChild(dislikeButton);
-                    contentDiv.appendChild(voteContainer);
-                });
-        }
+        // Récupérer toutes les options
+        const options = Array.from(contentDiv.querySelectorAll('.response-option'));
+        
+        // Trier les options par nombre de likes (descendant)
+        const sortedOptions = await sortOptionsByLikes(options);
+        
+        // Ajouter les options triées au conteneur
+        sortedOptions.forEach(option => {
+          optionsContainer.appendChild(option);
+        });
+        
+        // Remplacer le contenu original par les options triées
+        contentDiv.innerHTML = '';
+        contentDiv.appendChild(optionsContainer);
+        
+        // Ajouter les boutons de vote à chaque option
+        sortedOptions.forEach(option => {
+          const optionText = option.textContent.trim();
+          const responseHash = hashString(optionText);
+          
+          const voteContainer = document.createElement('div');
+          voteContainer.className = 'vote-buttons';
+          
+          fetch(`/get_votes?hash=${responseHash}`)
+            .then(response => response.json())
+            .then(data => {
+              const likeButton = document.createElement('button');
+              likeButton.className = 'vote-button';
+              likeButton.innerHTML = `👍 <span class="vote-count">${data.likes || 0}</span>`;
+              likeButton.onclick = (e) => {
+                e.stopPropagation();
+                handleVote(option, 'like', responseHash);
+              };
+              
+              const dislikeButton = document.createElement('button');
+              dislikeButton.className = 'vote-button';
+              dislikeButton.innerHTML = `👎 <span class="vote-count">${data.dislikes || 0}</span>`;
+              dislikeButton.onclick = (e) => {
+                e.stopPropagation();
+                handleVote(option, 'dislike', responseHash);
+              };
+              
+              voteContainer.appendChild(likeButton);
+              voteContainer.appendChild(dislikeButton);
+              option.appendChild(voteContainer);
+            });
+        });
+      } else if (contentDiv.closest('.bot-message')) {
+        // Gestion des votes pour les réponses simples
+        const responseHash = hashString(contentDiv.textContent);
+        const voteContainer = document.createElement('div');
+        voteContainer.className = 'vote-buttons';
+        
+        fetch(`/get_votes?hash=${responseHash}`)
+          .then(response => response.json())
+          .then(data => {
+            const likeButton = document.createElement('button');
+            likeButton.className = 'vote-button';
+            likeButton.innerHTML = `👍 <span class="vote-count">${data.likes || 0}</span>`;
+            likeButton.onclick = () => handleVote(contentDiv, 'like', responseHash);
+            
+            const dislikeButton = document.createElement('button');
+            dislikeButton.className = 'vote-button';
+            dislikeButton.innerHTML = `👎 <span class="vote-count">${data.dislikes || 0}</span>`;
+            dislikeButton.onclick = () => handleVote(contentDiv, 'dislike', responseHash);
+            
+            voteContainer.appendChild(likeButton);
+            voteContainer.appendChild(dislikeButton);
+            contentDiv.appendChild(voteContainer);
+          });
+      }
     }
+    
+    async function sortOptionsByLikes(options) {
+      // Créer un tableau de promesses pour récupérer les votes de chaque option
+      const votePromises = options.map(option => {
+        const optionText = option.textContent.trim();
+        const responseHash = hashString(optionText);
+        return fetch(`/get_votes?hash=${responseHash}`)
+          .then(response => response.json())
+          .then(data => {
+            return {
+              element: option,
+              likes: data.likes || 0,
+              dislikes: data.dislikes || 0
+            };
+          });
+      });
+      
+      // Attendre que toutes les requêtes soient terminées
+      const optionsWithVotes = await Promise.all(votePromises);
+      
+      // Trier les options par nombre de likes (descendant)
+      optionsWithVotes.sort((a, b) => b.likes - a.likes);
+      
+      // Retourner seulement les éléments triés
+      return optionsWithVotes.map(item => item.element);
+    }
+    
     async function handleVote(element, voteType, responseHash) {
-        const buttonsContainer = element.parentElement;
-        const buttons = buttonsContainer.querySelectorAll('.vote-button');
-    
-    // Désactiver tous les boutons pour cette option
-        buttons.forEach(btn => {
-            btn.disabled = true;
-            if (btn !== element) {
-                btn.classList.remove('liked', 'disliked');
-            }
-        });
-    
-    // Mettre en évidence le bouton sélectionné
-        element.classList.add(voteType === 'like' ? 'liked' : 'disliked');
-    
-    // Préparer les données du site
-        const question = document.querySelector('.user-message:last-child')?.textContent || 'Question inconnue';
-        const response = element.closest('.response-option') ? 
-            element.closest('.response-option').textContent.replace(/👍 \d+|👎 \d+/g, '').trim() : 
-            element.closest('.message').textContent.replace(/👍 \d+|👎 \d+/g, '').trim();
-    
-        const siteData = {
-            Question: question,
-            Réponse: response,
-            URL: window.location.href
-        };
-    
-        try {
-            const response = await fetch('/vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    hash: responseHash.toString(),
-                    type: voteType,
-                    site_data: siteData
-                })
-            });
-        
-            if (!response.ok) throw new Error('Échec du vote');
-        
-            // Mettre à jour le compteur localement
-            const countSpan = element.querySelector('.vote-count');
-            const currentCount = parseInt(countSpan.textContent) || 0;
-            countSpan.textContent = currentCount + 1;
-        
-        } catch (error) {
-            console.error('Erreur lors du vote:', error);
-        // Annuler les changements UI si le vote échoue
-            element.classList.remove('liked', 'disliked');
-            buttons.forEach(btn => btn.disabled = false);
+      const buttonsContainer = element.parentElement;
+      const buttons = buttonsContainer.querySelectorAll('.vote-button');
+      
+      // Désactiver tous les boutons pour cette option
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        if (btn !== element) {
+          btn.classList.remove('liked', 'disliked');
         }
+      });
+      
+      // Mettre en évidence le bouton sélectionné
+      element.classList.add(voteType === 'like' ? 'liked' : 'disliked');
+      
+      // Préparer les données du site
+      const question = document.querySelector('.user-message:last-child')?.textContent || 'Question inconnue';
+      const response = element.closest('.response-option') ? 
+        element.closest('.response-option').textContent.replace(/👍 \d+|👎 \d+/g, '').trim() : 
+        element.closest('.message').textContent.replace(/👍 \d+|👎 \d+/g, '').trim();
+      
+      const siteData = {
+        Question: question,
+        Réponse: response,
+        URL: window.location.href
+      };
+      
+      try {
+        const response = await fetch('/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hash: responseHash.toString(),
+            type: voteType,
+            site_data: siteData
+          })
+        });
+        
+        if (!response.ok) throw new Error('Échec du vote');
+        
+        // Mettre à jour le compteur localement
+        const countSpan = element.querySelector('.vote-count');
+        const currentCount = parseInt(countSpan.textContent) || 0;
+        countSpan.textContent = currentCount + 1;
+        
+        // Si c'est une réponse multiple, re-trier les options
+        if (element.closest('.response-options-container')) {
+          const optionsContainer = element.closest('.response-options-container');
+          const options = Array.from(optionsContainer.querySelectorAll('.response-option'));
+          const sortedOptions = await sortOptionsByLikes(options);
+          
+          // Vider et remplir à nouveau le conteneur avec les options triées
+          optionsContainer.innerHTML = '';
+          sortedOptions.forEach(option => {
+            optionsContainer.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors du vote:', error);
+        // Annuler les changements UI si le vote échoue
+        element.classList.remove('liked', 'disliked');
+        buttons.forEach(btn => btn.disabled = false);
+      }
     }
+    
     // Fonction utilitaire pour hacher une chaîne (similaire à ce que fait le serveur)
     function hashString(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convertir en entier 32 bits
-        }
-        return hash;
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convertir en entier 32 bits
+      }
+      return hash;
     }
+    
     function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', `${sender}-message`);
-        
-        // Si c'est du texte simple
-        if (typeof text === 'string') {
-            messageDiv.textContent = text;
-        } else {
-            messageDiv.appendChild(text);
-        }
-        
-        chatHistory.appendChild(messageDiv);
-        scrollToBottom();
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', `${sender}-message`);
+      
+      // Si c'est du texte simple
+      if (typeof text === 'string') {
+        messageDiv.textContent = text;
+      } else {
+        messageDiv.appendChild(text);
+      }
+      
+      chatHistory.appendChild(messageDiv);
+      scrollToBottom();
     }
 
     function showTypingIndicator() {
@@ -536,6 +667,11 @@
         form.dispatchEvent(new Event('submit'));
       }
     });
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+      chatInput.focus();
+    });
   </script>
 </body>
-</html> 
+</html>
