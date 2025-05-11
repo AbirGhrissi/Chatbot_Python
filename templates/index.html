@@ -52,16 +52,116 @@
       opacity: 0.9;
     }
 
+    .main-container {
+      display: flex;
+      flex-grow: 1;
+      overflow: hidden;
+    }
+
+    .history-sidebar {
+      width: 300px;
+      background-color: white;
+      border-right: 1px solid #e9ecef;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .history-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .history-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .new-chat-button {
+      color: var(--secondary-color);
+    }
+
+    .new-chat-button:hover {
+      background-color: #f0f7ff;
+    }
+
+    .clear-history {
+      color: var(--accent-color);
+    }
+
+    .clear-history:hover {
+      background-color: #fff0f0;
+    }
+
+    .history-list {
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      padding: 0.8rem;
+      margin-bottom: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .history-item:hover {
+      background-color: #f8f9fa;
+    }
+
+    .history-item.active {
+      background-color: #f0f7ff;
+      border-left: 3px solid var(--secondary-color);
+    }
+
+    .history-question {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-date {
+      font-size: 0.7rem;
+      color: #7f8c8d;
+      margin-top: 0.3rem;
+    }
+
     .chat-container {
+      flex-grow: 1;
       max-width: 800px;
       margin: 2rem auto;
       background: white;
       border-radius: 10px;
       box-shadow: var(--shadow);
       overflow: hidden;
-      flex-grow: 1;
       display: flex;
       flex-direction: column;
+      height: calc(100vh - 200px);
     }
 
     .chat-history {
@@ -238,6 +338,13 @@
       margin-top: 5px;
     }
 
+    .no-history {
+      text-align: center;
+      padding: 2rem;
+      color: #7f8c8d;
+      font-size: 0.9rem;
+    }
+
     @keyframes blink {
       0%, 80%, 100% { opacity: 0; }
       40% { opacity: 1; }
@@ -248,11 +355,23 @@
       30% { transform: translateY(-5px); }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+      }
+
+      .history-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+        max-height: 200px;
+      }
+
       .chat-container {
         margin: 0;
         border-radius: 0;
-        min-height: 100vh;
+        height: auto;
+        flex-grow: 1;
       }
 
       .message {
@@ -267,23 +386,40 @@
     <p>Votre assistant virtuel pour toutes vos questions académiques</p>
   </div>
 
-  <div class="chat-container">
-    <div class="chat-history" id="chat-history">
-      <div class="message bot-message">
-        Bonjour ! Je suis le chatbot de l'ISET. Comment puis-je vous aider aujourd'hui ?
+  <div class="main-container">
+    <div class="history-sidebar" id="history-sidebar">
+      <div class="history-header">
+        <div class="history-title">Historique des conversations</div>
+        <div class="history-actions">
+          <button class="history-button new-chat-button" id="new-chat-button">
+            <span>Nouveau</span>
+          </button>
+          <button class="history-button clear-history" id="clear-history">
+            <span>Effacer</span>
+          </button>
+        </div>
       </div>
+      <div class="history-list" id="history-list"></div>
     </div>
 
-    <form class="chat-form" id="chat-form">
-      <input type="text" class="chat-input" placeholder="Posez votre question..." required id="message-input">
-      <button type="button" id="mic-button" class="send-button">🎤</button>
-      <div id="recording-indicator">
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
+    <div class="chat-container">
+      <div class="chat-history" id="chat-history">
+        <div class="message bot-message">
+          Bonjour ! Je suis le chatbot de l'ISET. Comment puis-je vous aider aujourd'hui ?
+        </div>
       </div>
-      <button type="submit" class="send-button">Envoyer</button>
-    </form>
+
+      <form class="chat-form" id="chat-form">
+        <input type="text" class="chat-input" placeholder="Posez votre question..." required id="message-input">
+        <button type="button" id="mic-button" class="send-button">🎤</button>
+        <div id="recording-indicator">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <button type="submit" class="send-button">Envoyer</button>
+      </form>
+    </div>
   </div>
 
   <div class="footer">
@@ -296,6 +432,15 @@
     const chatInput = document.getElementById('message-input');
     const micButton = document.getElementById("mic-button");
     const recordingIndicator = document.getElementById("recording-indicator");
+    const historyList = document.getElementById("history-list");
+    const clearHistoryBtn = document.getElementById("clear-history");
+    const newChatButton = document.getElementById("new-chat-button");
+
+    // Charger l'historique au démarrage
+    document.addEventListener('DOMContentLoaded', () => {
+      loadHistory();
+      chatInput.focus();
+    });
 
     // Vérifie si la reconnaissance vocale est disponible
     const isSpeechRecognitionSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
@@ -376,6 +521,11 @@
           messageDiv.appendChild(contentDiv);
 
           await typewriterEffect(contentDiv, data.reponse);
+          
+          // Sauvegarde dans localStorage
+          saveToLocalStorage(message, data.reponse);
+          loadHistory(); // Rafraîchir l'historique
+
           applyMessageStyles(contentDiv);
           scrollToBottom();
         } else {
@@ -387,6 +537,112 @@
         addMessage("Une erreur technique est survenue. Notre équipe a été notifiée. Vous pouvez essayer de reformuler votre question ou consulter <a href='https://isetsf.rnu.tn' target='_blank'>le site de l'ISET</a> directement.", 'bot');
       }
     });
+
+    // Effacer l'historique
+    clearHistoryBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (confirm("Êtes-vous sûr de vouloir effacer tout l'historique des conversations ?")) {
+        localStorage.removeItem('chatHistory');
+        historyList.innerHTML = '<div class="no-history">Aucun historique disponible</div>';
+      }
+    });
+
+    // Nouvelle conversation
+    newChatButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      startNewConversation();
+    });
+
+    // Charger l'historique depuis localStorage
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      historyList.innerHTML = '';
+
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="no-history">Aucun historique disponible</div>';
+        return;
+      }
+
+      // Afficher les éléments d'historique du plus récent au plus ancien
+      history.reverse().forEach((item, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        historyItem.dataset.index = history.length - 1 - index; // Inverser l'index pour garder l'ordre original
+        
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'history-question';
+        questionDiv.textContent = item.question || item.Question || 'Question sans texte';
+        
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'history-date';
+        
+        if (item.timestamp) {
+          const date = new Date(item.timestamp);
+          dateDiv.textContent = date.toLocaleString('fr-FR');
+        } else {
+          dateDiv.textContent = 'Date inconnue';
+        }
+        
+        historyItem.appendChild(questionDiv);
+        historyItem.appendChild(dateDiv);
+        historyList.appendChild(historyItem);
+
+        // Ajouter un gestionnaire d'événements pour charger la conversation
+        historyItem.addEventListener('click', () => {
+          loadConversation(history.length - 1 - index);
+        });
+      });
+    }
+
+    // Charger une conversation spécifique depuis l'historique
+    function loadConversation(index) {
+      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      if (index >= 0 && index < history.length) {
+        const conversation = history[index];
+        
+        // Vider le chat actuel
+        chatHistory.innerHTML = '';
+        
+        // Ajouter la question de l'utilisateur
+        addMessage(conversation.question || conversation.Question, 'user');
+        
+        // Ajouter la réponse du bot
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'bot-message');
+        messageDiv.innerHTML = conversation.response || conversation.Réponse || conversation.reponse;
+        chatHistory.appendChild(messageDiv);
+        
+        // Appliquer les styles aux messages
+        applyMessageStyles(messageDiv);
+        scrollToBottom();
+        
+        // Mettre en surbrillance l'élément sélectionné
+        document.querySelectorAll('.history-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        document.querySelector(`.history-item[data-index="${index}"]`).classList.add('active');
+      }
+    }
+
+    // Commencer une nouvelle conversation
+    function startNewConversation() {
+      // Vider le chat actuel
+      chatHistory.innerHTML = '';
+      
+      // Ajouter le message de bienvenue initial
+      const welcomeMessage = document.createElement('div');
+      welcomeMessage.classList.add('message', 'bot-message');
+      welcomeMessage.textContent = "Bonjour ! Je suis le chatbot de l'ISET. Comment puis-je vous aider aujourd'hui ?";
+      chatHistory.appendChild(welcomeMessage);
+      
+      // Désactiver la surbrillance dans l'historique
+      document.querySelectorAll('.history-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // Focus sur l'input
+      chatInput.focus();
+    }
 
     function showError(message) {
       const errorDiv = document.createElement('div');
@@ -659,16 +915,21 @@
       chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
+    function saveToLocalStorage(question, response) {
+      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      history.push({
+        question: question,
+        response: response,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('chatHistory', JSON.stringify(history));
+    }
+
     chatInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         form.dispatchEvent(new Event('submit'));
       }
-    });
-
-    // Initialisation
-    document.addEventListener('DOMContentLoaded', () => {
-      chatInput.focus();
     });
   </script>
 </body>
